@@ -1,11 +1,22 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, Image, TouchableOpacity, Alert } from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
-import { Drug } from '../utils/types';
-import { updateBasket, selectCartItems, decreaseBasket } from '../redux/slices/basketSlice';
-import tw from 'twrnc';
-import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { RootStackParamList } from '../navigation';
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  Image,
+  Alert,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+} from "react-native";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  updateBasket,
+  selectCartItems,
+  decreaseBasket,
+} from "../redux/slices/basketSlice"; // Update the import path as needed
+import { useNavigation } from "@react-navigation/native";
+import { Drug } from "../utils/types"; // Import the Drug interface
+import tailwind from "tailwind-react-native-classnames";
 
 type Props = {
   drug: Drug;
@@ -13,14 +24,15 @@ type Props = {
 
 const DrugCard: React.FC<Props> = ({ drug }) => {
   const dispatch = useDispatch();
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const cartItems = useSelector(selectCartItems);
+  const navigation = useNavigation();
   const currentImageIndex = 0; // Assuming you handle image index somehow
 
   const [inCart, setInCart] = useState(false);
 
   const handleAdd = (drug: Drug) => {
-    const currentCartQuantity = cartItems.find((item) => item.id === drug.id)?.quantity ?? 0;
+    const currentCartQuantity =
+      cartItems.find((item) => item.id === drug.id)?.quantity ?? 0;
     if (currentCartQuantity < drug.quantity_available) {
       dispatch(updateBasket(drug));
     } else {
@@ -41,79 +53,104 @@ const DrugCard: React.FC<Props> = ({ drug }) => {
 
   if (!drug || drug.quantity_available <= 0) return null; // Don't display if drug is undefined or quantity is less than or equal to 0
 
+  const screenWidth = Dimensions.get('window').width;
+  const cardWidth = screenWidth - 20; // Adjust based on padding/margin
+
   return (
-    <View style={tw`relative bg-white rounded-lg shadow-lg p-4 mb-4`}>
-      <View style={tw`absolute inset-0 rounded-lg bg-blue-500 opacity-0 hover:opacity-100`} />
-      <View style={tw`relative h-48 rounded-t-lg overflow-hidden`}>
+    <View
+      style={[
+        tailwind`bg-white rounded-lg shadow-lg p-4 m-2`,
+        { width: cardWidth },
+      ]}
+    >
+      <View style={tailwind`relative w-full h-64 rounded-t-lg overflow-hidden`}>
         {drug.image_urls && drug.image_urls[currentImageIndex] ? (
           <Image
             source={{ uri: drug.image_urls[currentImageIndex] }}
-            style={tw`w-full h-full`}
-            resizeMode="cover"
+            style={styles.image}
           />
         ) : (
-          <View style={tw`w-full h-full bg-gray-200 flex items-center justify-center`}>
+          <View
+            style={tailwind`w-full h-full bg-gray-200 flex items-center justify-center`}
+          >
             <Text>No Image Available</Text>
           </View>
         )}
+        <Text
+          style={[
+            tailwind`absolute top-2 right-2 font-semibold text-lg text-white bg-black bg-opacity-75 px-2 py-1 rounded`,
+            styles.priceText,
+          ]}
+        >
+          R{drug.price}
+        </Text>
       </View>
-      <View style={tw`relative p-4`}>
-        <View style={tw`mb-2 flex-row justify-between items-center`}>
-          <Text style={tw`font-semibold text-lg text-gray-900`}>{drug.name}</Text>
-          <Text style={tw`font-semibold text-lg text-gray-900`}>R{drug.price}</Text>
+      <View style={tailwind`relative p-4`}>
+        <View style={tailwind`mb-2 flex items-center justify-between`}>
+          <Text style={tailwind`font-semibold text-lg text-gray-900`}>
+            {drug.name}
+          </Text>
         </View>
-
         {drug.quantity_available < 10 && (
-          <Text style={tw`text-red-500 text-sm mt-2`}>
+          <Text style={tailwind`text-red-500 text-sm mt-2`}>
             Warning: Low stock, only {drug.quantity_available} left!
           </Text>
         )}
       </View>
-      <View style={tw`relative flex-row justify-between items-center p-4`}>
+      <View style={tailwind`relative flex justify-between items-center p-4`}>
         {inCart ? (
-          <View style={tw`flex-row items-center`}>
+          <View style={tailwind`flex flex-row items-center`}>
             <TouchableOpacity
-              style={tw`bg-red-500 text-white px-4 py-2 rounded`}
+              style={tailwind`bg-red-500 px-4 py-2 rounded`}
               onPress={() => handleDecrease(drug.id)}
             >
-              <Text>-</Text>
+              <Text style={tailwind`text-white`}>-</Text>
             </TouchableOpacity>
-            <Text style={tw`text-lg mx-2`}>{cartItems.find((item) => item.id === drug.id)?.quantity ?? 0}</Text>
+            <Text style={tailwind`text-lg mx-2`}>
+              {cartItems.find((item) => item.id === drug.id)?.quantity ?? 0}
+            </Text>
             <TouchableOpacity
-              style={tw`bg-green-500 text-white px-4 py-2 rounded`}
+              style={tailwind`bg-green-500 px-4 py-2 rounded`}
               onPress={() => handleAdd(drug)}
             >
-              <Text>+</Text>
+              <Text style={tailwind`text-white`}>+</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <TouchableOpacity
-            style={tw`bg-green-500 text-white px-4 py-2 rounded w-full`}
+            style={tailwind`bg-green-500 px-4 py-2 rounded w-full`}
             onPress={() => handleAdd(drug)}
           >
-            <Text>Add to Cart</Text>
+            <Text style={tailwind`text-white text-center`}>Add to Cart</Text>
           </TouchableOpacity>
         )}
       </View>
-      <View style={tw`relative p-4`}>
+      <View style={tailwind`relative p-4`}>
         {inCart ? (
-          <TouchableOpacity
-            onPress={() => navigation.navigate('CartPage')}
-            style={tw`mt-6`}
-          >
-            <Text style={tw`text-blue-500`}>Go to Cart</Text>
+          <TouchableOpacity onPress={() => navigation.navigate("CartPage")}>
+            <Text style={tailwind`mt-6 text-blue-500`}>Go to Cart</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
-            onPress={() => navigation.navigate('DrugPage', { id: drug.id })}
-            style={tw`mt-6`}
+            onPress={() => navigation.navigate("DrugPage", { id: drug.id })}
           >
-            <Text style={tw`text-blue-500`}>View Product</Text>
+            <Text style={tailwind`mt-6 text-blue-500`}>View Product</Text>
           </TouchableOpacity>
         )}
       </View>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  image: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'contain', // Equivalent to object-contain
+  },
+  priceText: {
+    zIndex: 10,
+  },
+});
 
 export default DrugCard;

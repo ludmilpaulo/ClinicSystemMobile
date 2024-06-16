@@ -1,8 +1,8 @@
-import axios from 'axios';
-import { store } from '@/redux/store';
-import { selectUser } from '@/redux/slices/authSlice';
-import { baseAPI } from '@/utils/variables';
-import { AboutUsData, ApiResponse, User } from '@/utils/types';
+import axios from "axios";
+import { store } from "../redux/store";
+import { selectUser } from "../redux/slices/authSlice";
+import { baseAPI } from "../utils/variables";
+import { ApiResponse, User } from "../utils/types";
 
 const API_URL = baseAPI as string;
 
@@ -17,22 +17,25 @@ api.interceptors.request.use(
     const user = selectUser(state);
     const token = user?.token;
     if (token) {
-      config.headers['Authorization'] = `Token ${token}`;
+      config.headers["Authorization"] = `Token ${token}`;
     }
     return config;
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 const handleError = (error: unknown) => {
   if (axios.isAxiosError(error)) {
-    console.error('Axios error:', error.response?.data || error.message);
-    throw new Error(error.response?.data?.message || 'An error occurred while making the request.');
+    console.error("Axios error:", error.response?.data || error.message);
+    throw new Error(
+      error.response?.data?.message ||
+        "An error occurred while making the request.",
+    );
   } else {
-    console.error('Unexpected error:', error);
-    throw new Error('An unexpected error occurred.');
+    console.error("Unexpected error:", error);
+    throw new Error("An unexpected error occurred.");
   }
 };
 
@@ -47,11 +50,15 @@ export const fetchDrugs = async () => {
 
 export const createDrug = async (drugData: FormData) => {
   try {
-    const response = await axios.post(`${baseAPI}/pharmacy/drugs/create/`, drugData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
+    const response = await axios.post(
+      `${baseAPI}/pharmacy/drugs/create/`,
+      drugData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       },
-    });
+    );
     return response.data;
   } catch (error) {
     handleError(error);
@@ -69,11 +76,15 @@ export const fetchCategories = async () => {
 
 export const updateDrug = async (id: number, drugData: FormData) => {
   try {
-    const response = await axios.put(`${baseAPI}/pharmacy/pharmacy/detail/${id}/`, drugData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
+    const response = await axios.put(
+      `${baseAPI}/pharmacy/pharmacy/detail/${id}/`,
+      drugData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       },
-    });
+    );
     return response.data;
   } catch (error) {
     handleError(error);
@@ -82,7 +93,9 @@ export const updateDrug = async (id: number, drugData: FormData) => {
 
 export const deleteDrug = async (id: number) => {
   try {
-    const response = await axios.delete(`${baseAPI}/pharmacy/pharmacy/detail/${id}/`);
+    const response = await axios.delete(
+      `${baseAPI}/pharmacy/pharmacy/detail/${id}/`,
+    );
     return response.data;
   } catch (error) {
     handleError(error);
@@ -91,7 +104,7 @@ export const deleteDrug = async (id: number) => {
 
 export const createOrder = async (orderData: any) => {
   try {
-    const response = await api.post('/order/orders/', orderData);
+    const response = await api.post("/order/orders/", orderData);
     return response.data;
   } catch (error) {
     handleError(error);
@@ -103,16 +116,22 @@ export const fetchOrders = async () => {
     const response = await axios.get(`${baseAPI}/order/orders/`);
     return response.data;
   } catch (error) {
-    console.error('Error fetching orders:', error);
+    console.error("Error fetching orders:", error);
     return [];
   }
 };
 
-export const updateOrderStatus = async (orderId: number, data: { status: string }) => {
+export const updateOrderStatus = async (
+  orderId: number,
+  data: { status: string },
+) => {
   try {
-    await axios.patch(`${baseAPI}/order/orders/${orderId}/update-status/`, data);
+    await axios.patch(
+      `${baseAPI}/order/orders/${orderId}/update-status/`,
+      data,
+    );
   } catch (error) {
-    console.error('Error updating order status:', error);
+    console.error("Error updating order status:", error);
     throw error;
   }
 };
@@ -122,7 +141,7 @@ export const fetchSalesSummary = async () => {
     const response = await axios.get(`${baseAPI}/order/sales-summary/`);
     return response.data;
   } catch (error) {
-    console.error('Error fetching sales summary:', error);
+    console.error("Error fetching sales summary:", error);
     return { daily_sales: 0, monthly_sales: 0, yearly_sales: 0 };
   }
 };
@@ -156,7 +175,9 @@ export const fetchUsers = async () => {
 
 export const fetchAboutUs = async (): Promise<ApiResponse[]> => {
   try {
-    const response = await axios.get<ApiResponse[]>(`${API_URL}/info/about-us/`);
+    const response = await axios.get<ApiResponse[]>(
+      `${API_URL}/info/about-us/`,
+    );
     return response.data || [];
   } catch (error) {
     console.error("Error fetching About Us data:", error);
@@ -278,7 +299,11 @@ export const createResource = async (resource: string, data: any) => {
   return response.data;
 };
 
-export const updateResource = async (resource: string, id: number, data: any) => {
+export const updateResource = async (
+  resource: string,
+  id: number,
+  data: any,
+) => {
   const response = await api.put(`/${resource}/${id}/`, data);
   return response.data;
 };
@@ -288,12 +313,18 @@ export const deleteResource = async (resource: string, id: number) => {
   return response.data;
 };
 
+// adminService.ts
+
+//const API_URL = "https://ludmil.pythonanywhere.com/api"; // Ensure this URL is correct
+
 export const fetchAboutUsData = async (): Promise<ApiResponse | null> => {
   try {
+    console.log("Making API call to fetch About Us data");
     const response = await axios.get<ApiResponse>(`${API_URL}/info/about-us/`);
+
     return response.data || null;
   } catch (error) {
     console.error("Error fetching About Us data:", error);
-    return null;
+    throw error;
   }
 };

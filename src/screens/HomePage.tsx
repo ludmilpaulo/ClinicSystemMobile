@@ -1,93 +1,111 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ActivityIndicator, TextInput, ScrollView } from 'react-native';
-import DrugCard from '../components/DrugCard';
-import { Drug } from '../utils/types';
-import { Picker } from '@react-native-picker/picker';
-import tw from 'twrnc';
-import { fetchDrugs, fetchCategories } from '../services/apiService';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import {
+  View,
+  Text,
+  TextInput,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+} from "react-native";
+import { Picker } from "@react-native-picker/picker";
+import DrugCard from "../components/DrugCard";
+import { Drug } from "../utils/types";
+import { baseAPI } from "../utils/variables";
+import tailwind from "tailwind-react-native-classnames";
 
 const HomePage = () => {
   const [drugs, setDrugs] = useState<Drug[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [categories, setCategories] = useState<string[]>(['All']);
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const drugsData = await fetchDrugs();
-        setDrugs(drugsData);
-      } catch (error) {
-        setError(error.message);
-      } finally {
+    axios
+      .get(`${baseAPI}/pharmacy/pharmacy/drugs/`)
+      .then((response) => {
+        setDrugs(response.data);
         setLoading(false);
-      }
-    };
+      })
+      .catch((error) => {
+        setError(error.message);
+        setLoading(false);
+      });
 
-    const loadCategories = async () => {
-      try {
-        const categoriesData = await fetchCategories();
-        setCategories(categoriesData);
-      } catch (error) {
+    axios
+      .get(`${baseAPI}/pharmacy/pharmacy/categories/`)
+      .then((response) => {
+        setCategories([
+          "All",
+          ...response.data.map((category: { name: string }) => category.name),
+        ]);
+      })
+      .catch((error) => {
         console.error("Error fetching categories", error);
-      }
-    };
-
-    loadData();
-    loadCategories();
+      });
   }, []);
 
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category);
   };
 
-  const handleSearchChange = (text: string) => {
-    setSearchQuery(text);
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
   };
 
-  const filteredDrugs = drugs.filter(drug => {
-    const matchesCategory = selectedCategory === 'All' || drug.category_name === selectedCategory;
-    const matchesSearchQuery = drug.name.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredDrugs = drugs.filter((drug) => {
+    const matchesCategory =
+      selectedCategory === "All" || drug.category_name === selectedCategory;
+    const matchesSearchQuery = drug.name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearchQuery;
   });
 
   return (
-    <View style={tw`flex-1 p-4 bg-gray-100`}>
-      {loading && (
-        <View style={tw`flex-1 justify-center items-center`}>
+    <View style={[tailwind`flex-1 p-4 pt-12`]}>
+      {loading ? (
+        <View style={[tailwind`flex items-center justify-center h-full`]}>
           <ActivityIndicator size="large" color="#0000ff" />
         </View>
-      )}
-      {!loading && (
+      ) : (
         <>
-          {error && <Text style={tw`text-red-500 mb-4`}>Error: {error}</Text>}
-          <View style={tw`mb-4`}>
-            <Text style={tw`font-semibold text-lg mb-2 text-gray-700`}>Filter by Category:</Text>
-            <View style={tw`border border-gray-300 rounded-lg p-2 bg-white`}>
-              <Picker
-                selectedValue={selectedCategory}
-                onValueChange={(itemValue) => handleCategoryChange(itemValue)}
-              >
-                {categories.map((category, index) => (
-                  <Picker.Item key={index} label={category} value={category} />
-                ))}
-              </Picker>
+          {error && (
+            <Text style={[tailwind`text-red-500 mb-4`]}>Error: {error}</Text>
+          )}
+          <View style={[tailwind`mb-4 flex-row justify-between items-center`]}>
+            <View>
+              <Text style={[tailwind`font-semibold text-lg mr-2`]}>
+                Filter by Category:
+              </Text>
+              <View style={[tailwind`border rounded px-4 py-2`]}>
+                <Picker
+                  selectedValue={selectedCategory}
+                  onValueChange={handleCategoryChange}
+                >
+                  {categories.map((category, index) => (
+                    <Picker.Item
+                      key={index}
+                      label={category}
+                      value={category}
+                    />
+                  ))}
+                </Picker>
+              </View>
             </View>
           </View>
           <TextInput
-            style={tw`h-10 border-2 border-transparent bg-blue-500 rounded-lg mb-4 px-2 text-white placeholder-white focus:outline-none`}
+            style={[tailwind`border rounded px-4 py-2 mb-4`]}
             placeholder="Search..."
-            placeholderTextColor="rgba(255, 255, 255, 0.7)"
             value={searchQuery}
             onChangeText={handleSearchChange}
           />
-          <ScrollView contentContainerStyle={tw`flex-row flex-wrap justify-between`}>
+          <ScrollView contentContainerStyle={styles.gridContainer}>
             {filteredDrugs.map((drug) => (
-              <View key={drug.id} style={tw`w-full md:w-5/12 lg:w-3/12 mb-4`}>
-                <DrugCard drug={drug} />
-              </View>
+              <DrugCard key={drug.id} drug={drug} />
             ))}
           </ScrollView>
         </>
@@ -95,5 +113,17 @@ const HomePage = () => {
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  gridContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  gridItem: {
+    width: "48%", // Adjust based on your desired column width
+    marginBottom: 20,
+  },
+});
 
 export default HomePage;

@@ -1,32 +1,40 @@
-import axios, { isAxiosError } from 'axios';
-import { baseAPI } from '@/utils/variables';
+import axios, { isAxiosError } from "axios";
+import { baseAPI } from "../utils/variables";
 
 const API_URL = `${baseAPI}/account`;
 
-
-
-export const signup = async (username: string, email: string, password: string) => {
+export const signup = async (
+  username: string,
+  email: string,
+  password: string,
+) => {
   try {
-    const response = await axios.post(`${API_URL}/signup/`, { username, email, password });
+    const response = await axios.post(`${API_URL}/signup/`, {
+      username,
+      email,
+      password,
+    });
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error) && error.response) {
-      return error.response.data;  // Return the error response data
+      return error.response.data; // Return the error response data
     }
-    return { error: 'An unexpected error occurred. Please try again.' };
+    return { error: "An unexpected error occurred. Please try again." };
   }
 };
 
-
 export const login = async (username: string, password: string) => {
   try {
-    const response = await axios.post(`${API_URL}/login/`, { username, password });
+    const response = await axios.post(`${API_URL}/login/`, {
+      username,
+      password,
+    });
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error) && error.response) {
       return error.response.data;
     }
-    return { error: 'An unexpected error occurred. Please try again.' };
+    return { error: "An unexpected error occurred. Please try again." };
   }
 };
 
@@ -42,9 +50,17 @@ export const requestPasswordReset = async (email: string) => {
   }
 };
 
-export const resetPassword = async (uid: string, token: string, newPassword: string) => {
+export const resetPassword = async (
+  uid: string,
+  token: string,
+  newPassword: string,
+) => {
   try {
-    const response = await axios.post(`${API_URL}/password-reset/confirm/`, { uid, token, newPassword });
+    const response = await axios.post(`${API_URL}/password-reset/confirm/`, {
+      uid,
+      token,
+      newPassword,
+    });
     return response.data;
   } catch (error) {
     if (isAxiosError(error)) {
