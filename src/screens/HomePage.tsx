@@ -66,22 +66,22 @@ const HomePage = () => {
   });
 
   return (
-    <View style={[tailwind`flex-1 p-4 pt-12`]}>
+    <View style={tailwind`flex-1 p-4 pt-12`}>
       {loading ? (
-        <View style={[tailwind`flex items-center justify-center h-full`]}>
+        <View style={tailwind`flex items-center justify-center h-full`}>
           <ActivityIndicator size="large" color="#0000ff" />
         </View>
       ) : (
         <>
           {error && (
-            <Text style={[tailwind`text-red-500 mb-4`]}>Error: {error}</Text>
+            <Text style={tailwind`text-red-500 mb-4`}>Error: {error}</Text>
           )}
-          <View style={[tailwind`mb-4 flex-row justify-between items-center`]}>
+          <View style={tailwind`mb-4 flex-row justify-between items-center`}>
             <View>
-              <Text style={[tailwind`font-semibold text-lg mr-2`]}>
+              <Text style={tailwind`font-semibold text-lg mr-2`}>
                 Filter by Category:
               </Text>
-              <View style={[tailwind`border rounded px-4 py-2`]}>
+              <View style={tailwind`border rounded px-4 py-2`}>
                 <Picker
                   selectedValue={selectedCategory}
                   onValueChange={handleCategoryChange}
@@ -98,7 +98,7 @@ const HomePage = () => {
             </View>
           </View>
           <TextInput
-            style={[tailwind`border rounded px-4 py-2 mb-4`]}
+            style={tailwind`border rounded px-4 py-2 mb-4`}
             placeholder="Search..."
             value={searchQuery}
             onChangeText={handleSearchChange}

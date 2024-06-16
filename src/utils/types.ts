@@ -174,3 +174,13 @@ export interface Order {
   invoice?: string;
   items: OrderItem[];
 }
+
+
+export type RootStackParamList = {
+  Home: undefined;
+  BannerScreen: undefined;
+  DrugPage: { id: number };
+  CartPage: undefined;
+  CheckoutPage: undefined;
+};
+

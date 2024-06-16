@@ -8,6 +8,7 @@ import {
   ScrollView,
   StyleSheet,
   Dimensions,
+  Animated,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import axios from "axios";
@@ -15,7 +16,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { updateBasket, selectCartItems } from "../redux/slices/basketSlice"; // Update the import path as needed
 import { Drug } from "../utils/types";
 import { baseAPI } from "../utils/variables";
-import Icon from "react-native-vector-icons/FontAwesome";
+import { FontAwesome } from '@expo/vector-icons';
 import RenderHTML from "react-native-render-html";
 import tailwind from "tailwind-react-native-classnames";
 
@@ -28,6 +29,7 @@ const DrugPage: React.FC = () => {
   const route = useRoute();
   const dispatch = useDispatch();
   const cartItems = useSelector(selectCartItems);
+  const fadeAnim = new Animated.Value(0);
 
   const { id: drugId } = route.params as { id: string };
 
@@ -44,6 +46,13 @@ const DrugPage: React.FC = () => {
           setLoading(false);
         });
     }
+
+    // Animate the fade-in effect
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
   }, [drugId]);
 
   const handleAddToCart = (drug: Drug) => {
@@ -73,9 +82,11 @@ const DrugPage: React.FC = () => {
   const { width } = Dimensions.get("window");
 
   return (
-    <View style={tailwind`flex-1 pt-14 pb-10 px-4`}>
+    <View style={tailwind`flex-1 pt-14 pb-10 px-4 bg-gray-100`}>
       {loading ? (
-        <View style={[styles.fixed, styles.center, styles.fullScreen, styles.overlay]}>
+        <View
+          style={[styles.fixed, styles.center, styles.fullScreen, styles.overlay]}
+        >
           <ActivityIndicator size="large" color="#0000ff" />
         </View>
       ) : (
@@ -89,28 +100,28 @@ const DrugPage: React.FC = () => {
                 style={tailwind`flex-row items-center text-blue-500 mb-4`}
                 onPress={() => navigation.goBack()}
               >
-                <Icon name="arrow-left" size={20} style={tailwind`mr-2`} />
-                <Text>Back to Products</Text>
+                <FontAwesome name="arrow-left" size={20} style={tailwind`mr-2`} />
+                <Text style={tailwind`text-lg`}>Back to Products</Text>
               </TouchableOpacity>
               <View style={tailwind`flex-col`}>
                 <View style={tailwind`w-full relative mb-4`}>
                   {drug.image_urls && drug.image_urls.length > 0 ? (
                     <>
-                      <Image
+                      <Animated.Image
                         source={{ uri: drug.image_urls[currentImageIndex] }}
-                        style={styles.image}
+                        style={[styles.image, { opacity: fadeAnim }]}
                       />
                       <TouchableOpacity
                         style={styles.arrowButton}
                         onPress={prevSlide}
                       >
-                        <Icon name="chevron-left" size={20} color="white" />
+                        <FontAwesome name="chevron-left" size={20} color="white" />
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.arrowButton, styles.rightArrowButton]}
                         onPress={nextSlide}
                       >
-                        <Icon name="chevron-right" size={20} color="white" />
+                        <FontAwesome name="chevron-right" size={20} color="white" />
                       </TouchableOpacity>
                     </>
                   ) : (
@@ -143,7 +154,7 @@ const DrugPage: React.FC = () => {
                     onPress={() => handleAddToCart(drug)}
                     disabled={isInCart(drug)}
                   >
-                    <Icon name="shopping-cart" size={20} style={tailwind`mr-2`} />
+                    <FontAwesome name="shopping-cart" size={20} style={tailwind`mr-2`} />
                     <Text>{isInCart(drug) ? "Already in Cart" : "Add to Cart"}</Text>
                   </TouchableOpacity>
                 </View>
@@ -170,6 +181,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#4b5563",
     padding: 8,
     borderRadius: 50,
+    zIndex: 1,
   },
   rightArrowButton: {
     left: "auto",

@@ -1,165 +1,206 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   Image,
   TouchableOpacity,
-  ScrollView,
   ActivityIndicator,
-  Alert,
+  ScrollView,
+  StyleSheet,
+  Dimensions,
+  Animated,
 } from "react-native";
-import { useSelector, useDispatch } from "react-redux";
-import { useNavigation } from "@react-navigation/native";
-import Icon from "react-native-vector-icons/FontAwesome";
-import tw from "twrnc";
-import {
-  selectCartItems,
-  updateBasket,
-  decreaseBasket,
-  removeFromBasket,
-  clearCart,
-} from "../redux/slices/basketSlice";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import axios from "axios";
+import { useDispatch, useSelector } from "react-redux";
+import { updateBasket, selectCartItems } from "../redux/slices/basketSlice"; // Update the import path as needed
 import { Drug } from "../utils/types";
+import { baseAPI } from "../utils/variables";
+import { FontAwesome } from '@expo/vector-icons';
+import RenderHTML from "react-native-render-html";
+import tailwind from "tailwind-react-native-classnames";
 
-const CartPage: React.FC = () => {
+const DrugPage: React.FC = () => {
+  const [drug, setDrug] = useState<Drug | null>(null);
   const [loading, setLoading] = useState(true);
-  const cartItems = useSelector(selectCartItems);
-  const dispatch = useDispatch();
+  const [error, setError] = useState<string | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const navigation = useNavigation();
+  const route = useRoute();
+  const dispatch = useDispatch();
+  const cartItems = useSelector(selectCartItems);
+  const fadeAnim = new Animated.Value(0);
+
+  const { id: drugId } = route.params as { id: string };
 
   useEffect(() => {
-    // Simulate loading delay
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
-  }, []);
+    if (drugId) {
+      axios
+        .get(`${baseAPI}/pharmacy/pharmacy/detail/${drugId}/`)
+        .then((response) => {
+          setDrug(response.data);
+          setLoading(false);
+        })
+        .catch((error) => {
+          setError(error.message);
+          setLoading(false);
+        });
+    }
 
-  const handleIncrease = (item: Drug) => {
-    if (item.quantity && item.quantity < item.quantity_available) {
-      dispatch(updateBasket({ ...item, quantity: item.quantity + 1 }));
+    // Animate the fade-in effect
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+  }, [drugId]);
+
+  const handleAddToCart = (drug: Drug) => {
+    dispatch(updateBasket(drug));
+  };
+
+  const isInCart = (drug: Drug) => {
+    return cartItems.some((item) => item.id === drug.id);
+  };
+
+  const nextSlide = () => {
+    if (drug && drug.image_urls) {
+      setCurrentImageIndex(
+        (prevIndex) => (prevIndex + 1) % drug.image_urls.length
+      );
     }
   };
 
-  const handleDecrease = (id: number) => {
-    dispatch(decreaseBasket(id));
+  const prevSlide = () => {
+    if (drug && drug.image_urls) {
+      setCurrentImageIndex((prevIndex) =>
+        prevIndex === 0 ? drug.image_urls.length - 1 : prevIndex - 1
+      );
+    }
   };
 
-  const handleRemove = (id: number) => {
-    dispatch(removeFromBasket(id));
-  };
-
-  const handleClearCart = () => {
-    dispatch(clearCart());
-  };
-
-  const handleCheckout = () => {
-    navigation.navigate("CheckoutPage"); // Redirect to the checkout page
-  };
-
-  const totalPrice = cartItems.reduce(
-    (acc, item) => acc + item.price * (item.quantity || 1),
-    0
-  );
+  const { width } = Dimensions.get("window");
 
   return (
-    <View style={tw`flex-1 p-6`}>
+    <View style={tailwind`flex-1 pt-14 pb-10 px-4 bg-gray-100`}>
       {loading ? (
         <View
-          style={tw`fixed top-0 left-0 z-50 flex items-center justify-center w-full h-full bg-black bg-opacity-50`}
+          style={[styles.fixed, styles.center, styles.fullScreen, styles.overlay]}
         >
           <ActivityIndicator size="large" color="#0000ff" />
         </View>
       ) : (
-        <ScrollView>
-          <Text style={tw`text-3xl font-bold mb-6 text-center`}>
-            Shopping Cart
-          </Text>
-          {cartItems.length === 0 ? (
-            <View style={tw`text-center text-gray-600`}>
-              <Text>Your cart is empty.</Text>
-              <Text>Continue shopping to add items to your cart.</Text>
-            </View>
-          ) : (
-            <>
-              <View style={tw`flex-row justify-between items-center mb-6`}>
-                <Text style={tw`text-xl font-semibold`}>Cart Items</Text>
-                <TouchableOpacity
-                  onPress={handleClearCart}
-                  style={tw`bg-red-500 text-white px-4 py-2 rounded`}
-                >
-                  <Text style={tw`text-white`}>Clear Cart</Text>
-                </TouchableOpacity>
-              </View>
-              <View style={tw`bg-white shadow-lg rounded-lg p-6`}>
-                {cartItems.map((item) => (
-                  <View
-                    key={item.id}
-                    style={tw`flex-row justify-between items-center border-b pb-4 mb-4`}
-                  >
-                    <View style={tw`flex-row items-center space-x-4`}>
-                      <Image
-                        source={{ uri: item.image_urls[0] }}
-                        style={tw`w-20 h-20 rounded`}
-                        resizeMode="cover"
+        <>
+          {error && (
+            <Text style={tailwind`text-center text-red-500 mb-4`}>Error: {error}</Text>
+          )}
+          {drug && (
+            <ScrollView contentContainerStyle={tailwind`bg-white shadow-lg rounded-lg p-6`}>
+              <TouchableOpacity
+                style={tailwind`flex-row items-center text-blue-500 mb-4`}
+                onPress={() => navigation.goBack()}
+              >
+                <FontAwesome name="arrow-left" size={20} style={tailwind`mr-2`} />
+                <Text style={tailwind`text-lg`}>Back to Products</Text>
+              </TouchableOpacity>
+              <View style={tailwind`flex-col`}>
+                <View style={tailwind`w-full relative mb-4`}>
+                  {drug.image_urls && drug.image_urls.length > 0 ? (
+                    <>
+                      <Animated.Image
+                        source={{ uri: drug.image_urls[currentImageIndex] }}
+                        style={[styles.image, { opacity: fadeAnim }]}
                       />
-                      <View>
-                        <Text style={tw`text-lg font-semibold`}>
-                          {item.name}
-                        </Text>
-                        <Text style={tw`text-gray-600`}>R{item.price}</Text>
-                        <View style={tw`flex-row items-center space-x-2 mt-2`}>
-                          <TouchableOpacity
-                            onPress={() => handleDecrease(item.id)}
-                            style={tw`bg-gray-200 px-3 py-1 rounded`}
-                          >
-                            <Text>-</Text>
-                          </TouchableOpacity>
-                          <Text style={tw`font-semibold text-lg`}>
-                            {item.quantity}
-                          </Text>
-                          <TouchableOpacity
-                            onPress={() => handleIncrease(item)}
-                            style={tw`bg-gray-200 px-3 py-1 rounded`}
-                          >
-                            <Text>+</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    </View>
-                    <View style={tw`flex-row items-center space-x-4`}>
-                      <Text style={tw`text-lg font-semibold`}>
-                        R{(item.price * (item.quantity || 1)).toFixed(2)}
-                      </Text>
                       <TouchableOpacity
-                        onPress={() => handleRemove(item.id)}
-                        style={tw`text-red-500`}
+                        style={styles.arrowButton}
+                        onPress={prevSlide}
                       >
-                        <Icon name="trash" size={20} color="red" />
+                        <FontAwesome name="chevron-left" size={20} color="white" />
                       </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.arrowButton, styles.rightArrowButton]}
+                        onPress={nextSlide}
+                      >
+                        <FontAwesome name="chevron-right" size={20} color="white" />
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    <View style={tailwind`w-full h-full bg-gray-200 flex items-center justify-center rounded`}>
+                      <Text>No Images Available</Text>
                     </View>
-                  </View>
-                ))}
-                <View style={tw`flex-row justify-between items-center mt-6`}>
-                  <Text style={tw`text-xl font-semibold`}>Total</Text>
-                  <Text style={tw`text-2xl font-bold`}>
-                    R{totalPrice.toFixed(2)}
-                  </Text>
+                  )}
                 </View>
-                <View style={tw`flex-row justify-end mt-6`}>
+                <View style={tailwind`w-full`}>
+                  <Text style={tailwind`text-2xl font-bold mb-2`}>{drug.name}</Text>
+                  <Text style={tailwind`text-lg font-semibold text-gray-700 mb-4`}>R{drug.price}</Text>
+                  <Text style={tailwind`text-gray-600 mb-2`}>
+                    <Text style={tailwind`font-semibold`}>Category:</Text> {drug.category_name}
+                  </Text>
+                  <RenderHTML
+                    contentWidth={width - 40} // Adjust the content width as needed
+                    source={{ html: drug.description }}
+                    baseStyle={tailwind`text-gray-600 mb-4`}
+                  />
+                  {drug.quantity_available < 10 && (
+                    <Text style={tailwind`text-red-500 text-sm mb-4`}>
+                      Warning: Low stock, only {drug.quantity_available} left!
+                    </Text>
+                  )}
                   <TouchableOpacity
-                    onPress={handleCheckout}
-                    style={tw`bg-green-500 text-white px-6 py-2 rounded`}
+                    style={[
+                      tailwind`flex-row items-center justify-center bg-green-500 text-white px-4 py-2 rounded w-full`,
+                      isInCart(drug) ? tailwind`opacity-50` : {}
+                    ]}
+                    onPress={() => handleAddToCart(drug)}
+                    disabled={isInCart(drug)}
                   >
-                    <Text style={tw`text-white`}>Checkout</Text>
+                    <FontAwesome name="shopping-cart" size={20} style={tailwind`mr-2`} />
+                    <Text>{isInCart(drug) ? "Already in Cart" : "Add to Cart"}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
-            </>
+            </ScrollView>
           )}
-        </ScrollView>
+        </>
       )}
     </View>
   );
 };
 
-export default CartPage;
+const styles = StyleSheet.create({
+  image: {
+    width: '100%',
+    height: 240, // Adjust height as needed
+    borderRadius: 8,
+  },
+  arrowButton: {
+    position: "absolute",
+    top: "50%",
+    left: 0,
+    transform: [{ translateY: -50 }],
+    backgroundColor: "#4b5563",
+    padding: 8,
+    borderRadius: 50,
+    zIndex: 1,
+  },
+  rightArrowButton: {
+    left: "auto",
+    right: 0,
+  },
+  fixed: {
+    position: "absolute",
+  },
+  center: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  fullScreen: {
+    width: "100%",
+    height: "100%",
+  },
+  overlay: {
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+});
+
+export default DrugPage;

@@ -15,17 +15,21 @@ import {
   decreaseBasket,
 } from "../redux/slices/basketSlice"; // Update the import path as needed
 import { useNavigation } from "@react-navigation/native";
-import { Drug } from "../utils/types"; // Import the Drug interface
+import { StackNavigationProp } from "@react-navigation/stack";
+import { Drug, RootStackParamList } from "../utils/types"; // Import the Drug interface
 import tailwind from "tailwind-react-native-classnames";
+
 
 type Props = {
   drug: Drug;
 };
 
+type DrugCardNavigationProp = StackNavigationProp<RootStackParamList, 'DrugPage'>;
+
 const DrugCard: React.FC<Props> = ({ drug }) => {
   const dispatch = useDispatch();
   const cartItems = useSelector(selectCartItems);
-  const navigation = useNavigation();
+  const navigation = useNavigation<DrugCardNavigationProp>();
   const currentImageIndex = 0; // Assuming you handle image index somehow
 
   const [inCart, setInCart] = useState(false);

@@ -10,15 +10,22 @@ import {
   StyleSheet,
 } from "react-native";
 import { fetchAboutUsData } from "../services/adminService";
-import { AboutUsData, ApiResponse } from "../utils/types";
+import { AboutUsData, ApiResponse, RootStackParamList } from "../utils/types";
 import { useNavigation } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
+
 import { t } from "react-native-tailwindcss";
-import Animated, { FadeIn } from "react-native-reanimated";
+import * as Animatable from 'react-native-animatable';
+
+type BannerScreenNavigationProp = StackNavigationProp<
+  RootStackParamList,
+  'Home'
+>;
 
 const BannerScreen: React.FC = () => {
   const [headerData, setHeaderData] = useState<AboutUsData | null>(null);
   const [isMounted, setIsMounted] = useState(false);
-  const navigation = useNavigation();
+  const navigation = useNavigation<BannerScreenNavigationProp>();
   const { width } = Dimensions.get("window");
 
   useEffect(() => {
@@ -48,7 +55,7 @@ const BannerScreen: React.FC = () => {
 
   const handleViewProducts = () => {
     console.log("Navigating to Home page");
-    navigation.navigate("Home"); // Replace with the name of your products page
+    navigation.navigate("Home"); // Now correctly typed
   };
 
   const textStyle = width > 600 ? t.text4xl : t.text2xl;
@@ -89,26 +96,34 @@ const BannerScreen: React.FC = () => {
               t.p4,
             ]}
           >
-            <Animated.Text
-              entering={FadeIn.delay(500).duration(1000)}
+            <Animatable.Text
+              animation="fadeIn"
+              delay={500}
+              duration={1000}
               style={[textStyle, t.fontSemibold, t.textWhite, t.mB2]}
             >
               THE BEST
-            </Animated.Text>
-            <Animated.Text
-              entering={FadeIn.delay(1000).duration(1000)}
+            </Animatable.Text>
+            <Animatable.Text
+              animation="fadeIn"
+              delay={1000}
+              duration={1000}
               style={[textStyleBold, t.fontBold, t.textBlue500, t.mB4]}
             >
               MEDICAL
-            </Animated.Text>
-            <Animated.Text
-              entering={FadeIn.delay(1500).duration(1000)}
+            </Animatable.Text>
+            <Animatable.Text
+              animation="fadeIn"
+              delay={1500}
+              duration={1000}
               style={[textStyle, t.fontSemibold, t.textWhite, t.mB4]}
             >
               HEALTHY CENTRE
-            </Animated.Text>
-            <Animated.Text
-              entering={FadeIn.delay(2000).duration(1000)}
+            </Animatable.Text>
+            <Animatable.Text
+              animation="fadeIn"
+              delay={2000}
+              duration={1000}
               style={[
                 t.textLg,
                 t.textGray300,
@@ -120,8 +135,8 @@ const BannerScreen: React.FC = () => {
               At Men&apos;s Clinic, we are dedicated to providing specialized
               products and treatments designed exclusively for men&apos;s
               health.
-            </Animated.Text>
-            <Animated.View entering={FadeIn.delay(2500).duration(1000)}>
+            </Animatable.Text>
+            <Animatable.View animation="fadeIn" delay={2500} duration={1000}>
               <TouchableOpacity
                 style={[
                   t.mT4,
@@ -136,7 +151,7 @@ const BannerScreen: React.FC = () => {
               >
                 <Text style={t.textWhite}>VIEW OUR PRODUCTS</Text>
               </TouchableOpacity>
-            </Animated.View>
+            </Animatable.View>
           </View>
         </ImageBackground>
       )}

@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, Button, Alert, ScrollView } from "react-native";
-import { useSelector, useDispatch } from "react-redux";
-import { useNavigation } from "@react-navigation/native";
+import React, { useState, useRef } from "react";
+import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet } from "react-native";
+import { useDispatch, useSelector } from "react-redux";
 import CryptoJS from "crypto-js";
 import axios from "axios";
-import { selectUser } from "../redux/slices/authSlice";
+import { WebView } from "react-native-webview";
+import { t } from "react-native-tailwindcss";
+import { selectUser } from "../redux/slices/authSlice"; // Adjust the path based on your project structure
 import { clearCart, selectCartItems } from "../redux/slices/basketSlice";
-import { baseAPI } from "../utils/variables";
-import tw from "twrnc";
+import { baseAPI } from "../utils/variables"; // Adjust the path based on your project structure
 
 interface FormState {
   name: string;
@@ -29,9 +29,9 @@ const BillingDetailsForm: React.FC<BillingDetailsFormProps> = ({
 }) => {
   const user = useSelector(selectUser);
   const token = user?.token;
-  const navigation = useNavigation();
   const dispatch = useDispatch();
   const cartItems = useSelector(selectCartItems);
+  const webviewRef = useRef<WebView>(null);
 
   const [form, setForm] = useState<FormState>({
     name: "",
@@ -42,17 +42,7 @@ const BillingDetailsForm: React.FC<BillingDetailsFormProps> = ({
     country: "",
   });
 
-  useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "https://sandbox.payfast.co.za/onsite/engine.js";
-    script.async = true;
-    document.body.appendChild(script);
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
-
-  const handleChange = (name: string, value: string) => {
+  const handleChange = (name: keyof FormState, value: string) => {
     setForm({
       ...form,
       [name]: value,
@@ -92,12 +82,12 @@ const BillingDetailsForm: React.FC<BillingDetailsFormProps> = ({
       if (response.ok) {
         dispatch(clearCart());
         if (status === "completed") {
-          navigation.navigate("ThankYouPage");
+          Alert.alert("Success", "Order completed successfully.");
         }
       } else {
         const errorData = await response.json();
         console.error("Error:", errorData);
-        Alert.alert("Error", errorData.detail);
+        Alert.alert("Error", `Error: ${errorData.detail}`);
       }
     } catch (error) {
       console.error("Error:", error);
@@ -154,9 +144,7 @@ const BillingDetailsForm: React.FC<BillingDetailsFormProps> = ({
     }
   };
 
-  const handleMakePayment = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
+  const handleMakePayment = async () => {
     const myData: Record<string, string> = {
       merchant_id: process.env.NEXT_PUBLIC_MERCHANT_ID!,
       merchant_key: process.env.NEXT_PUBLIC_MERCHANT_KEY!,
@@ -180,70 +168,97 @@ const BillingDetailsForm: React.FC<BillingDetailsFormProps> = ({
     if (paymentUUID) {
       await handleSubmitOrder("pending");
 
-      window.addEventListener("message", (event) => {
-        if (event.data && event.data.status) {
-          if (event.data.status === "completed") {
-            handleSubmitOrder("completed");
-          } else if (event.data.status === "cancelled") {
-            handleSubmitOrder("canceled");
+      // Injecting JavaScript into the WebView to handle PayFast payment
+      const injectedJavaScript = `
+        window.addEventListener("message", (event) => {
+          if (event.data && event.data.status) {
+            if (event.data.status === "completed") {
+              window.ReactNativeWebView.postMessage("completed");
+            } else if (event.data.status === "cancelled") {
+              window.ReactNativeWebView.postMessage("canceled");
+            }
           }
-        }
-      });
+        });
 
-      window.payfast_do_onsite_payment({
-        uuid: paymentUUID,
-        return_url: process.env.NEXT_PUBLIC_RETURN_URL!,
-        cancel_url: process.env.NEXT_PUBLIC_CANCEL_URL!,
-      });
+        window.payfast_do_onsite_payment({
+          uuid: "${paymentUUID}",
+          return_url: "${process.env.NEXT_PUBLIC_RETURN_URL!}",
+          cancel_url: "${process.env.NEXT_PUBLIC_CANCEL_URL!}",
+        });
+      `;
+
+      webviewRef.current?.injectJavaScript(injectedJavaScript);
     }
   };
 
   return (
-    <ScrollView contentContainerStyle={tw`bg-white p-6 rounded-lg shadow-md`}>
-      <Text style={tw`text-2xl font-semibold mb-4`}>Billing Details</Text>
+    <View style={[styles.container, t.bgWhite, t.p6, t.roundedLg, t.shadowMd]}>
+      <Text style={[t.text2xl, t.fontSemibold, t.mB4]}>Billing Details</Text>
       <TextInput
+        style={[t.mB4, t.wFull, t.p2, t.border, t.rounded]}
         placeholder="Name"
         value={form.name}
         onChangeText={(value) => handleChange("name", value)}
-        style={tw`mb-4 w-full p-2 border rounded`}
       />
       <TextInput
+        style={[t.mB4, t.wFull, t.p2, t.border, t.rounded]}
         placeholder="Email"
         value={form.email}
         onChangeText={(value) => handleChange("email", value)}
-        style={tw`mb-4 w-full p-2 border rounded`}
+        keyboardType="email-address"
       />
       <TextInput
+        style={[t.mB4, t.wFull, t.p2, t.border, t.rounded]}
         placeholder="Address"
         value={form.address}
         onChangeText={(value) => handleChange("address", value)}
-        style={tw`mb-4 w-full p-2 border rounded`}
       />
       <TextInput
+        style={[t.mB4, t.wFull, t.p2, t.border, t.rounded]}
         placeholder="City"
         value={form.city}
         onChangeText={(value) => handleChange("city", value)}
-        style={tw`mb-4 w-full p-2 border rounded`}
       />
       <TextInput
+        style={[t.mB4, t.wFull, t.p2, t.border, t.rounded]}
         placeholder="Postal Code"
         value={form.postalCode}
         onChangeText={(value) => handleChange("postalCode", value)}
-        style={tw`mb-4 w-full p-2 border rounded`}
       />
       <TextInput
+        style={[t.mB4, t.wFull, t.p2, t.border, t.rounded]}
         placeholder="Country"
         value={form.country}
         onChangeText={(value) => handleChange("country", value)}
-        style={tw`mb-4 w-full p-2 border rounded`}
       />
-      <Button
-        title="Make Payment"
-        color="#28a745"
+      <TouchableOpacity
         onPress={handleMakePayment}
+        style={[t.bgGreen500, t.pX6, t.pY2, t.rounded, t.mT4]}
+      >
+        <Text style={[t.textWhite, t.textCenter]}>Make Payment</Text>
+      </TouchableOpacity>
+
+      <WebView
+        ref={webviewRef}
+        originWhitelist={['*']}
+        source={{ html: '<html><head></head><body></body></html>' }}
+        onMessage={(event) => {
+          if (event.nativeEvent.data === 'completed') {
+            handleSubmitOrder('completed');
+          } else if (event.nativeEvent.data === 'canceled') {
+            handleSubmitOrder('canceled');
+          }
+        }}
+        style={{ display: 'none' }}
       />
-    </ScrollView>
+    </View>
   );
 };
 
 export default BillingDetailsForm;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});
