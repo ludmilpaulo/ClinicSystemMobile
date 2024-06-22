@@ -186,5 +186,8 @@ export type RootStackParamList = {
   Login: undefined;
   Signup: undefined;
   ForgotPassword: undefined;
-  BillingDetailsForm: { totalPrice: number }; // Add this line
+  BillingDetailsForm: { totalPrice: number };
+  ProfileInformation: undefined;
+  OrderHistory: undefined;
 };
+

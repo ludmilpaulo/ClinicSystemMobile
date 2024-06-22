@@ -1,19 +1,21 @@
-import React, { useEffect, useState } from "react";
-import { View, Text } from "react-native";
-import axios from "axios";
-import { useSelector, useDispatch } from "react-redux";
-import { useRouter } from "expo-router";
-import { baseAPI } from "../utils/variables";
-import { RootState } from "../redux/store";
-import { selectUser, logoutUser } from "../redux/slices/authSlice";
-import { clearCart } from "../redux/slices/basketSlice";
+// src/screens/UserProfile.tsx
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import axios from 'axios';
+import { useSelector, useDispatch } from 'react-redux';
+import { useNavigation } from '@react-navigation/native';
+import DrawerLayout from 'react-native-drawer-layout';
+import { baseAPI } from '../utils/variables';
+import { RootState } from '../redux/store';
+import { selectUser, logoutUser } from '../redux/slices/authSlice';
+import { clearCart } from '../redux/slices/basketSlice';
+import Sidebar from '../components/Sidebar';
+import Loading from '../components/Loading';
+import tw from 'twrnc';
+import { RootStackParamList } from '../utils/types';
 
-import Sidebar from "../components/Sidebar";
-import Loading from "../components/Loading";
-import tw from "twrnc";
-
-const ProfileInformation = React.lazy(() => import("../components/ProfileInformation"));
-const OrderHistory = React.lazy(() => import("../components/OrderHistory"));
+const ProfileInformation = React.lazy(() => import('../components/ProfileInformation'));
+const OrderHistory = React.lazy(() => import('../components/OrderHistory'));
 
 interface UserProfile {
   id: number;
@@ -31,13 +33,13 @@ interface UserProfile {
 const UserProfile = () => {
   const auth = useSelector((state: RootState) => selectUser(state));
   const dispatch = useDispatch();
-  const router = useRouter();
+  const navigation = useNavigation();
   const token = auth?.token;
   const userId = auth?.user_id;
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [activeComponent, setActiveComponent] = useState<string>("ProfileInformation");
+  const [error, setError] = useState('');
+  const drawer = useRef<DrawerLayout>(null);
 
   useEffect(() => {
     if (token && userId) {
@@ -60,25 +62,25 @@ const UserProfile = () => {
               setLoading(false);
             })
             .catch((error) => {
-              console.error("Failed to fetch user orders:", error);
-              setError("Failed to fetch user orders.");
+              console.error('Failed to fetch user orders:', error);
+              setError('Failed to fetch user orders.');
               setLoading(false);
             });
         })
         .catch((error) => {
           if (error.response && error.response.status === 404) {
-            console.error("User not found:", error);
+            console.error('User not found:', error);
             dispatch(logoutUser());
             dispatch(clearCart());
-            router.push("/Login");
+            navigation.navigate('Home');
           } else {
-            console.error("Failed to fetch user data:", error);
-            setError("Failed to fetch user data.");
+            console.error('Failed to fetch user data:', error);
+            setError('Failed to fetch user data.');
             setLoading(false);
           }
         });
     }
-  }, [token, userId, dispatch, router]);
+  }, [token, userId, dispatch, navigation]);
 
   const handleUpdateProfile = (updatedUser: UserProfile) => {
     if (updatedUser && token) {
@@ -91,7 +93,7 @@ const UserProfile = () => {
         .then((response) => {
           setUser(response.data);
         })
-        .catch((error) => console.error("Failed to update user data:", error));
+        .catch((error) => console.error('Failed to update user data:', error));
     }
   };
 
@@ -100,26 +102,52 @@ const UserProfile = () => {
   }
 
   if (error) {
-    return <View><Text>{error}</Text></View>;
+    return (
+      <View>
+        <Text>{error}</Text>
+      </View>
+    );
   }
 
   if (!user) {
-    return <View><Text>No user data available</Text></View>;
+    return (
+      <View>
+        <Text>No user data available</Text>
+      </View>
+    );
   }
 
   return (
-    <View style={tw`flex`}>
-      <Sidebar setActiveComponent={setActiveComponent} />
-      <View style={tw`flex-1 p-4 min-h-screen`}>
+    <DrawerLayout
+      ref={drawer}
+      drawerWidth={300}
+      drawerPosition={DrawerLayout.positions.Left}
+      renderNavigationView={(props) => <Sidebar {...props} />}
+    >
+      <View style={tw`flex-1 p-4`}>
+        <TouchableOpacity onPress={() => drawer.current?.openDrawer()} style={styles.menuButton}>
+          <Text style={styles.menuButtonText}>Menu</Text>
+        </TouchableOpacity>
         <React.Suspense fallback={<Loading loading={true} />}>
-          {activeComponent === "ProfileInformation" && (
-            <ProfileInformation user={user} handleUpdateProfile={handleUpdateProfile} />
-          )}
-          {activeComponent === "OrderHistory" && <OrderHistory orders={user.orders} />}
+          <ProfileInformation user={user} handleUpdateProfile={handleUpdateProfile} />
+          <OrderHistory orders={user.orders} />
         </React.Suspense>
       </View>
-    </View>
+    </DrawerLayout>
   );
 };
+
+const styles = StyleSheet.create({
+  menuButton: {
+    padding: 10,
+    backgroundColor: 'blue',
+    borderRadius: 5,
+    marginBottom: 20,
+  },
+  menuButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+});
 
 export default UserProfile;
