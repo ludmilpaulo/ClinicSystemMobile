@@ -1,165 +1,127 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  Image,
-  TouchableOpacity,
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Dimensions,
-  Animated,
-} from "react-native";
-import { useNavigation, useRoute } from "@react-navigation/native";
-import axios from "axios";
-import { useDispatch, useSelector } from "react-redux";
-import { updateBasket, selectCartItems } from "../redux/slices/basketSlice"; // Update the import path as needed
-import { Drug } from "../utils/types";
-import { baseAPI } from "../utils/variables";
-import { FontAwesome } from '@expo/vector-icons';
-import RenderHTML from "react-native-render-html";
+import React, { useState, useEffect } from "react";
+import { View, Text, Image, TouchableOpacity, ActivityIndicator, ScrollView } from "react-native";
+import { useSelector, useDispatch } from "react-redux";
+import { useNavigation, NavigationProp } from "@react-navigation/native";
 import tailwind from "tailwind-react-native-classnames";
+import { selectCartItems, updateBasket, decreaseBasket, removeFromBasket, clearCart } from "../redux/slices/basketSlice";
+import { Drug } from "../utils/types";
+import { FontAwesome } from '@expo/vector-icons';
+import { RootStackParamList } from "../utils/types"; // Ensure this path is correct
 
-const DrugPage: React.FC = () => {
-  const [drug, setDrug] = useState<Drug | null>(null);
+const CartPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const navigation = useNavigation();
-  const route = useRoute();
-  const dispatch = useDispatch();
   const cartItems = useSelector(selectCartItems);
-  const fadeAnim = new Animated.Value(0);
-
-  const { id: drugId } = route.params as { id: string };
+  const dispatch = useDispatch();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   useEffect(() => {
-    if (drugId) {
-      axios
-        .get(`${baseAPI}/pharmacy/pharmacy/detail/${drugId}/`)
-        .then((response) => {
-          setDrug(response.data);
-          setLoading(false);
-        })
-        .catch((error) => {
-          setError(error.message);
-          setLoading(false);
-        });
-    }
+    // Simulate loading delay
+    setTimeout(() => {
+      setLoading(false);
+    }, 1000);
+  }, []);
 
-    // Animate the fade-in effect
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
-  }, [drugId]);
-
-  const handleAddToCart = (drug: Drug) => {
-    dispatch(updateBasket(drug));
-  };
-
-  const isInCart = (drug: Drug) => {
-    return cartItems.some((item) => item.id === drug.id);
-  };
-
-  const nextSlide = () => {
-    if (drug && drug.image_urls) {
-      setCurrentImageIndex(
-        (prevIndex) => (prevIndex + 1) % drug.image_urls.length
-      );
+  const handleIncrease = (item: Drug) => {
+    if (item.quantity && item.quantity < item.quantity_available) {
+      dispatch(updateBasket({ ...item, quantity: item.quantity + 1 }));
     }
   };
 
-  const prevSlide = () => {
-    if (drug && drug.image_urls) {
-      setCurrentImageIndex((prevIndex) =>
-        prevIndex === 0 ? drug.image_urls.length - 1 : prevIndex - 1
-      );
-    }
+  const handleDecrease = (id: number) => {
+    dispatch(decreaseBasket(id));
   };
 
-  const { width } = Dimensions.get("window");
+  const handleRemove = (id: number) => {
+    dispatch(removeFromBasket(id));
+  };
+
+  const handleClearCart = () => {
+    dispatch(clearCart());
+  };
+
+  const handleCheckout = () => {
+    navigation.navigate("CheckoutPage"); // Redirect to the checkout page
+  };
+
+  const totalPrice = cartItems.reduce(
+    (acc, item) => acc + item.price * (item.quantity || 1),
+    0
+  );
 
   return (
-    <View style={tailwind`flex-1 pt-14 pb-10 px-4 bg-gray-100`}>
+    <View style={tailwind`flex-1 bg-gray-100`}>
       {loading ? (
-        <View
-          style={[styles.fixed, styles.center, styles.fullScreen, styles.overlay]}
-        >
+        <View style={tailwind`absolute top-0 left-0 z-50 w-full h-full flex items-center justify-center bg-black bg-opacity-50`}>
           <ActivityIndicator size="large" color="#0000ff" />
         </View>
       ) : (
         <>
-          {error && (
-            <Text style={tailwind`text-center text-red-500 mb-4`}>Error: {error}</Text>
-          )}
-          {drug && (
-            <ScrollView contentContainerStyle={tailwind`bg-white shadow-lg rounded-lg p-6`}>
-              <TouchableOpacity
-                style={tailwind`flex-row items-center text-blue-500 mb-4`}
-                onPress={() => navigation.goBack()}
-              >
-                <FontAwesome name="arrow-left" size={20} style={tailwind`mr-2`} />
-                <Text style={tailwind`text-lg`}>Back to Products</Text>
-              </TouchableOpacity>
-              <View style={tailwind`flex-col`}>
-                <View style={tailwind`w-full relative mb-4`}>
-                  {drug.image_urls && drug.image_urls.length > 0 ? (
-                    <>
-                      <Animated.Image
-                        source={{ uri: drug.image_urls[currentImageIndex] }}
-                        style={[styles.image, { opacity: fadeAnim }]}
-                      />
-                      <TouchableOpacity
-                        style={styles.arrowButton}
-                        onPress={prevSlide}
-                      >
-                        <FontAwesome name="chevron-left" size={20} color="white" />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.arrowButton, styles.rightArrowButton]}
-                        onPress={nextSlide}
-                      >
-                        <FontAwesome name="chevron-right" size={20} color="white" />
-                      </TouchableOpacity>
-                    </>
-                  ) : (
-                    <View style={tailwind`w-full h-full bg-gray-200 flex items-center justify-center rounded`}>
-                      <Text>No Images Available</Text>
-                    </View>
-                  )}
-                </View>
-                <View style={tailwind`w-full`}>
-                  <Text style={tailwind`text-2xl font-bold mb-2`}>{drug.name}</Text>
-                  <Text style={tailwind`text-lg font-semibold text-gray-700 mb-4`}>R{drug.price}</Text>
-                  <Text style={tailwind`text-gray-600 mb-2`}>
-                    <Text style={tailwind`font-semibold`}>Category:</Text> {drug.category_name}
-                  </Text>
-                  <RenderHTML
-                    contentWidth={width - 40} // Adjust the content width as needed
-                    source={{ html: drug.description }}
-                    baseStyle={tailwind`text-gray-600 mb-4`}
-                  />
-                  {drug.quantity_available < 10 && (
-                    <Text style={tailwind`text-red-500 text-sm mb-4`}>
-                      Warning: Low stock, only {drug.quantity_available} left!
-                    </Text>
-                  )}
-                  <TouchableOpacity
-                    style={[
-                      tailwind`flex-row items-center justify-center bg-green-500 text-white px-4 py-2 rounded w-full`,
-                      isInCart(drug) ? tailwind`opacity-50` : {}
-                    ]}
-                    onPress={() => handleAddToCart(drug)}
-                    disabled={isInCart(drug)}
+          <Text style={tailwind`text-3xl font-bold mb-6 text-center`}>Shopping Cart</Text>
+          {cartItems.length === 0 ? (
+            <View style={tailwind`flex-1 justify-center items-center text-center text-gray-600`}>
+              <Text>Your cart is empty.</Text>
+              <Text>Continue shopping to add items to your cart.</Text>
+            </View>
+          ) : (
+            <>
+              <ScrollView style={tailwind`flex-1 bg-white shadow-lg rounded-lg p-6 mb-20`}>
+                {cartItems.map((item) => (
+                  <View
+                    key={item.id}
+                    style={tailwind`flex flex-row justify-between items-center border-b pb-4 mb-4`}
                   >
-                    <FontAwesome name="shopping-cart" size={20} style={tailwind`mr-2`} />
-                    <Text>{isInCart(drug) ? "Already in Cart" : "Add to Cart"}</Text>
-                  </TouchableOpacity>
+                    <View style={tailwind`flex flex-row items-center space-x-4`}>
+                      <Image
+                        source={{ uri: item.image_urls[0] }}
+                        style={tailwind`w-20 h-20 rounded shadow`}
+                      />
+                      <View>
+                        <Text style={tailwind`text-lg font-semibold`}>{item.name}</Text>
+                        <Text style={tailwind`text-gray-600`}>R{item.price}</Text>
+                        <View style={tailwind`flex flex-row items-center space-x-2 mt-2`}>
+                          <TouchableOpacity
+                            onPress={() => handleDecrease(item.id)}
+                            style={tailwind`bg-gray-200 px-3 py-1 rounded-lg shadow hover:bg-gray-300 transition-colors duration-300`}
+                          >
+                            <FontAwesome name="minus" size={16} color="black" />
+                          </TouchableOpacity>
+                          <Text style={tailwind`font-semibold text-lg`}>{item.quantity}</Text>
+                          <TouchableOpacity
+                            onPress={() => handleIncrease(item)}
+                            style={tailwind`bg-gray-200 px-3 py-1 rounded-lg shadow hover:bg-gray-300 transition-colors duration-300`}
+                          >
+                            <FontAwesome name="plus" size={16} color="black" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </View>
+                    <View style={tailwind`flex flex-row items-center space-x-4`}>
+                      <Text style={tailwind`text-lg font-semibold`}>
+                        R{(item.price * (item.quantity || 1)).toFixed(2)}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => handleRemove(item.id)}
+                        style={tailwind`text-red-500 hover:text-red-700 transition-colors duration-300`}
+                      >
+                        <FontAwesome name="trash" size={24} color="red" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+                <View style={tailwind`flex flex-row justify-between items-center mt-6`}>
+                  <Text style={tailwind`text-xl font-semibold`}>Total</Text>
+                  <Text style={tailwind`text-2xl font-bold`}>R{totalPrice.toFixed(2)}</Text>
                 </View>
+              </ScrollView>
+              <View style={tailwind`absolute bottom-0 left-0 right-0 p-4 bg-white shadow-lg`}>
+                <TouchableOpacity
+                  onPress={handleCheckout}
+                  style={tailwind`bg-green-500 text-white px-6 py-3 rounded-lg shadow hover:bg-green-600 transition-colors duration-300`}
+                >
+                  <Text style={tailwind`text-white text-center text-lg`}>Checkout</Text>
+                </TouchableOpacity>
               </View>
-            </ScrollView>
+            </>
           )}
         </>
       )}
@@ -167,40 +129,4 @@ const DrugPage: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  image: {
-    width: '100%',
-    height: 240, // Adjust height as needed
-    borderRadius: 8,
-  },
-  arrowButton: {
-    position: "absolute",
-    top: "50%",
-    left: 0,
-    transform: [{ translateY: -50 }],
-    backgroundColor: "#4b5563",
-    padding: 8,
-    borderRadius: 50,
-    zIndex: 1,
-  },
-  rightArrowButton: {
-    left: "auto",
-    right: 0,
-  },
-  fixed: {
-    position: "absolute",
-  },
-  center: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  fullScreen: {
-    width: "100%",
-    height: "100%",
-  },
-  overlay: {
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-});
-
-export default DrugPage;
+export default CartPage;

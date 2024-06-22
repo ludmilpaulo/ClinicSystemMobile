@@ -1,13 +1,24 @@
 import React, { useState, useRef } from "react";
-import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, ActivityIndicator } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
 import CryptoJS from "crypto-js";
 import axios from "axios";
 import { WebView } from "react-native-webview";
-import { t } from "react-native-tailwindcss";
+import tailwind from "tailwind-react-native-classnames";
 import { selectUser } from "../redux/slices/authSlice"; // Adjust the path based on your project structure
 import { clearCart, selectCartItems } from "../redux/slices/basketSlice";
-import { baseAPI } from "../utils/variables"; // Adjust the path based on your project structure
+import { RouteProp, useRoute } from "@react-navigation/native";
+import { RootStackParamList } from "../utils/types";
+
+const NEXT_PUBLIC_BASE_API = "https://ludmil.pythonanywhere.com";
+const NEXT_PUBLIC_GOOGLE_API_KEY = "your_google_api_key_here";
+const NEXT_PUBLIC_RETURN_URL = "https://www.trustmenclinic.com/thank-you";
+const NEXT_PUBLIC_CANCEL_URL = "https://www.trustmenclinic.com/cancel"; // Added this line
+const NEXT_PUBLIC_MERCHANT_ID = "10000100";
+const NEXT_PUBLIC_MERCHANT_KEY = "46f0cd694581a";
+const NEXT_PUBLIC_PASSPHRASE = "jt7NOE43FZPn";
+
+type BillingDetailsFormRouteProp = RouteProp<RootStackParamList, 'BillingDetailsForm'>;
 
 interface FormState {
   name: string;
@@ -18,15 +29,10 @@ interface FormState {
   country: string;
 }
 
-interface BillingDetailsFormProps {
-  totalPrice: number;
-  setLoading: (loading: boolean) => void;
-}
-
-const BillingDetailsForm: React.FC<BillingDetailsFormProps> = ({
-  totalPrice,
-  setLoading,
-}) => {
+const BillingDetailsForm: React.FC = () => {
+  const route = useRoute<BillingDetailsFormRouteProp>();
+  const { totalPrice } = route.params;
+  const [loading, setLoading] = useState(false);
   const user = useSelector(selectUser);
   const token = user?.token;
   const dispatch = useDispatch();
@@ -51,6 +57,7 @@ const BillingDetailsForm: React.FC<BillingDetailsFormProps> = ({
 
   const handleSubmitOrder = async (status: string) => {
     setLoading(true);
+    console.log("Submitting order with status:", status);
 
     const orderData = {
       token: token || null,
@@ -71,7 +78,7 @@ const BillingDetailsForm: React.FC<BillingDetailsFormProps> = ({
     };
 
     try {
-      const response = await fetch(`${baseAPI}/order/checkout/`, {
+      const response = await fetch(`${NEXT_PUBLIC_BASE_API}/order/checkout/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -80,17 +87,18 @@ const BillingDetailsForm: React.FC<BillingDetailsFormProps> = ({
       });
 
       if (response.ok) {
+        console.log("Order submission successful");
         dispatch(clearCart());
         if (status === "completed") {
           Alert.alert("Success", "Order completed successfully.");
         }
       } else {
         const errorData = await response.json();
-        console.error("Error:", errorData);
+        console.error("Error during order submission:", errorData);
         Alert.alert("Error", `Error: ${errorData.detail}`);
       }
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error during order submission:", error);
       Alert.alert("Error", "An error occurred. Please try again.");
     }
 
@@ -130,6 +138,7 @@ const BillingDetailsForm: React.FC<BillingDetailsFormProps> = ({
           },
         },
       );
+      console.log("Payment identifier generated successfully:", response.data.uuid); // Debug statement
       return response.data.uuid;
     } catch (error: any) {
       console.error(
@@ -145,12 +154,14 @@ const BillingDetailsForm: React.FC<BillingDetailsFormProps> = ({
   };
 
   const handleMakePayment = async () => {
+    console.log("Make Payment button pressed"); // Debug statement
+
     const myData: Record<string, string> = {
-      merchant_id: process.env.NEXT_PUBLIC_MERCHANT_ID!,
-      merchant_key: process.env.NEXT_PUBLIC_MERCHANT_KEY!,
-      return_url: process.env.NEXT_PUBLIC_RETURN_URL!,
-      cancel_url: process.env.NEXT_PUBLIC_RETURN_URL!,
-      notify_url: `${process.env.NEXT_PUBLIC_BASE_API}/order/notify/`,
+      merchant_id: NEXT_PUBLIC_MERCHANT_ID,
+      merchant_key: NEXT_PUBLIC_MERCHANT_KEY,
+      return_url: NEXT_PUBLIC_RETURN_URL,
+      cancel_url: NEXT_PUBLIC_CANCEL_URL,
+      notify_url: `${NEXT_PUBLIC_BASE_API}/order/notify/`,
       name_first: form.name.split(" ")[0],
       name_last: form.name.split(" ")[1] || "",
       email_address: form.email,
@@ -159,13 +170,16 @@ const BillingDetailsForm: React.FC<BillingDetailsFormProps> = ({
       item_name: `Order #${new Date().getTime()}`,
     };
 
-    const passPhrase = process.env.NEXT_PUBLIC_PASSPHRASE!;
+    const passPhrase = NEXT_PUBLIC_PASSPHRASE;
     myData.signature = generateSignature(myData, passPhrase);
+
+    console.log("Generated signature:", myData.signature); // Debug statement
 
     const pfParamString = dataToString(myData);
     const paymentUUID = await generatePaymentIdentifier(pfParamString);
 
     if (paymentUUID) {
+      console.log("Submitting order with status pending"); // Debug statement
       await handleSubmitOrder("pending");
 
       // Injecting JavaScript into the WebView to handle PayFast payment
@@ -182,60 +196,61 @@ const BillingDetailsForm: React.FC<BillingDetailsFormProps> = ({
 
         window.payfast_do_onsite_payment({
           uuid: "${paymentUUID}",
-          return_url: "${process.env.NEXT_PUBLIC_RETURN_URL!}",
-          cancel_url: "${process.env.NEXT_PUBLIC_CANCEL_URL!}",
+          return_url: "${NEXT_PUBLIC_RETURN_URL}",
+          cancel_url: "${NEXT_PUBLIC_CANCEL_URL}",
         });
       `;
 
+      console.log("Injecting JavaScript into WebView:", injectedJavaScript); // Debug statement
       webviewRef.current?.injectJavaScript(injectedJavaScript);
     }
   };
 
   return (
-    <View style={[styles.container, t.bgWhite, t.p6, t.roundedLg, t.shadowMd]}>
-      <Text style={[t.text2xl, t.fontSemibold, t.mB4]}>Billing Details</Text>
+    <View style={tailwind`p-4 bg-white rounded-lg shadow-md`}>
+      <Text style={tailwind`text-2xl font-semibold mb-4`}>Billing Details</Text>
       <TextInput
-        style={[t.mB4, t.wFull, t.p2, t.border, t.rounded]}
+        style={tailwind`mb-4 w-full p-2 border rounded`}
         placeholder="Name"
         value={form.name}
         onChangeText={(value) => handleChange("name", value)}
       />
       <TextInput
-        style={[t.mB4, t.wFull, t.p2, t.border, t.rounded]}
+        style={tailwind`mb-4 w-full p-2 border rounded`}
         placeholder="Email"
         value={form.email}
         onChangeText={(value) => handleChange("email", value)}
         keyboardType="email-address"
       />
       <TextInput
-        style={[t.mB4, t.wFull, t.p2, t.border, t.rounded]}
+        style={tailwind`mb-4 w-full p-2 border rounded`}
         placeholder="Address"
         value={form.address}
         onChangeText={(value) => handleChange("address", value)}
       />
       <TextInput
-        style={[t.mB4, t.wFull, t.p2, t.border, t.rounded]}
+        style={tailwind`mb-4 w-full p-2 border rounded`}
         placeholder="City"
         value={form.city}
         onChangeText={(value) => handleChange("city", value)}
       />
       <TextInput
-        style={[t.mB4, t.wFull, t.p2, t.border, t.rounded]}
+        style={tailwind`mb-4 w-full p-2 border rounded`}
         placeholder="Postal Code"
         value={form.postalCode}
         onChangeText={(value) => handleChange("postalCode", value)}
       />
       <TextInput
-        style={[t.mB4, t.wFull, t.p2, t.border, t.rounded]}
+        style={tailwind`mb-4 w-full p-2 border rounded`}
         placeholder="Country"
         value={form.country}
         onChangeText={(value) => handleChange("country", value)}
       />
       <TouchableOpacity
         onPress={handleMakePayment}
-        style={[t.bgGreen500, t.pX6, t.pY2, t.rounded, t.mT4]}
+        style={tailwind`bg-green-500 px-6 py-2 rounded mt-4`}
       >
-        <Text style={[t.textWhite, t.textCenter]}>Make Payment</Text>
+        <Text style={tailwind`text-white text-center`}>Make Payment</Text>
       </TouchableOpacity>
 
       <WebView
@@ -244,13 +259,20 @@ const BillingDetailsForm: React.FC<BillingDetailsFormProps> = ({
         source={{ html: '<html><head></head><body></body></html>' }}
         onMessage={(event) => {
           if (event.nativeEvent.data === 'completed') {
+            console.log("Payment completed"); // Debug statement
             handleSubmitOrder('completed');
           } else if (event.nativeEvent.data === 'canceled') {
+            console.log("Payment canceled"); // Debug statement
             handleSubmitOrder('canceled');
           }
         }}
         style={{ display: 'none' }}
       />
+      {loading && (
+        <View style={tailwind`absolute top-0 left-0 z-50 w-full h-full flex items-center justify-center bg-black bg-opacity-50`}>
+          <ActivityIndicator size="large" color="#ffffff" />
+        </View>
+      )}
     </View>
   );
 };

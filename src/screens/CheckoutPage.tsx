@@ -1,17 +1,18 @@
 import React, { useState } from "react";
-import { View, Text, Button, StyleSheet, ActivityIndicator, TouchableOpacity } from "react-native";
+import { View, Text, ActivityIndicator, TouchableOpacity, SafeAreaView } from "react-native";
 import { useSelector } from "react-redux";
 import OrderSummary from "./OrderSummary";
-import BillingDetailsForm from "./BillingDetailsForm";
-import { t } from "react-native-tailwindcss";
+import tailwind from "tailwind-react-native-classnames";
 import * as Animatable from 'react-native-animatable';
-
+import { FontAwesome } from '@expo/vector-icons';
 import { selectCartItems } from "../redux/slices/basketSlice"; // Adjust the path based on your project structure
+import { useNavigation, NavigationProp } from "@react-navigation/native";
+import { RootStackParamList } from "../utils/types";
 
 const CheckoutPage: React.FC = () => {
   const cartItems = useSelector(selectCartItems) as any[]; // Adjust the type based on your actual state structure
   const [loading, setLoading] = useState(false);
-  const [showBillingForm, setShowBillingForm] = useState(false);
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   const totalPrice = cartItems.reduce(
     (acc, item) => acc + item.price * (item.quantity ?? 1),
@@ -19,81 +20,37 @@ const CheckoutPage: React.FC = () => {
   );
 
   const handlePlaceOrder = () => {
-    setShowBillingForm(true);
+    navigation.navigate("BillingDetailsForm", { totalPrice });
   };
 
   return (
-    <View style={[styles.container, t.p6]}>
-      <Text style={[t.text3xl, t.fontBold, t.mB6, t.textCenter]}>Checkout</Text>
-      <View style={[styles.gridContainer]}>
-        <OrderSummary totalPrice={totalPrice} />
-        <View>
-          {!showBillingForm && (
-            <View style={[t.flex, t.flexCol, t.justifyCenter, t.itemsCenter]}>
-              <TouchableOpacity
-                onPress={handlePlaceOrder}
-                style={[t.bgBlue500, t.pX6, t.pY2, t.rounded, styles.button]}
-              >
-                <Text style={[t.textWhite]}>Place Order</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          {showBillingForm && (
-            <BillingDetailsForm
-              totalPrice={totalPrice}
-              setLoading={setLoading}
-            />
-          )}
+    <SafeAreaView style={tailwind`flex-1 bg-gray-100`}>
+      <View style={tailwind`flex-1 p-6`}>
+        <Text style={tailwind`text-3xl font-bold mb-6 text-center`}>Checkout</Text>
+        <View style={tailwind`flex-1 justify-between`}>
+          <OrderSummary totalPrice={totalPrice} />
+          <View style={tailwind`mt-6 flex justify-center items-center`}>
+            <TouchableOpacity
+              onPress={handlePlaceOrder}
+              style={tailwind`bg-blue-500 px-6 py-2 rounded-lg shadow-lg hover:bg-blue-600 transition-colors duration-300 flex-row items-center`}
+            >
+              <FontAwesome name="shopping-cart" size={20} color="white" style={tailwind`mr-2`} />
+              <Text style={tailwind`text-white text-lg`}>Place Order</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
-      <Animatable.View
-        animation={loading ? "fadeIn" : "fadeOut"}
-        duration={300}
-        style={[loading ? styles.loadingContainer : t.hidden]}
-      >
-        <View style={styles.spinner}>
+      {loading && (
+        <Animatable.View
+          animation="fadeIn"
+          duration={300}
+          style={tailwind`absolute top-0 left-0 w-full h-full bg-black bg-opacity-50 flex items-center justify-center`}
+        >
           <ActivityIndicator size="large" color="#ffffff" />
-        </View>
-      </Animatable.View>
-    </View>
+        </Animatable.View>
+      )}
+    </SafeAreaView>
   );
 };
 
 export default CheckoutPage;
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  gridContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  button: {
-    backgroundColor: "#3b82f6",
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    marginTop: 16,
-  },
-  loadingContainer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    zIndex: 50,
-    width: "100%",
-    height: "100%",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  spinner: {
-    width: 64,
-    height: 64,
-    borderTopWidth: 4,
-    borderBottomWidth: 4,
-    borderColor: "#ffffff",
-    borderRadius: 32,
-  },
-});
